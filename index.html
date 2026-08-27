@@ -1,0 +1,614 @@
+<!doctype html>
+<html lang="bs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nema sastojka — Zapp</title>
+<style>
+  :root{
+    --nar:#FFA726; --nar-tam:#e08e10;
+    --bg:#0f1115; --panel:#181b22; --panel2:#20242d;
+    --tekst:#f2f4f8; --slabo:#98a0b0; --linija:#2b3140;
+    --crvena:#e5484d; --zelena:#3dd68c;
+  }
+  @media (prefers-color-scheme: light){
+    :root{ --bg:#f4f5f7; --panel:#fff; --panel2:#f0f1f4; --tekst:#14161a; --slabo:#5f6875; --linija:#dfe2e8; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--tekst);
+       font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+       -webkit-text-size-adjust:100%}
+  .wrap{max-width:920px;margin:0 auto;padding:16px}
+  header{display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--panel);
+         border-bottom:3px solid var(--nar);position:sticky;top:0;z-index:10}
+  .logo{font-weight:800;letter-spacing:-.5px;font-size:20px}
+  .logo span{color:var(--nar)}
+  .lokal{margin-left:auto;font-size:14px;color:var(--slabo);text-align:right}
+  h2{font-size:17px;margin:22px 0 10px;letter-spacing:.3px}
+  .kartica{background:var(--panel);border:1px solid var(--linija);border-radius:14px;padding:16px;margin-bottom:14px}
+  label{display:block;font-size:13px;color:var(--slabo);margin:10px 0 4px}
+  input[type=text],input[type=email],input[type=password],select{
+    width:100%;padding:13px 14px;font-size:16px;border-radius:10px;
+    border:1px solid var(--linija);background:var(--panel2);color:var(--tekst)}
+  input:focus,select:focus{outline:2px solid var(--nar);outline-offset:-1px}
+  button{font:inherit;font-weight:700;cursor:pointer;border:0;border-radius:10px;padding:13px 18px}
+  .btn{background:var(--nar);color:#111}
+  .btn:hover{background:var(--nar-tam)}
+  .btn2{background:var(--panel2);color:var(--tekst);border:1px solid var(--linija);font-weight:600}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .red{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .slabo{color:var(--slabo);font-size:13px}
+  .greska{background:rgba(229,72,77,.12);border:1px solid var(--crvena);color:var(--crvena);
+          padding:11px 13px;border-radius:10px;margin:10px 0;font-size:14px}
+  .ok{background:rgba(61,214,140,.12);border:1px solid var(--zelena);color:var(--zelena);
+      padding:11px 13px;border-radius:10px;margin:10px 0;font-size:14px}
+  .traka{height:8px;background:var(--panel2);border-radius:99px;overflow:hidden;margin:10px 0}
+  .traka i{display:block;height:100%;background:var(--nar);width:0;transition:width .2s}
+  /* lista sastojaka */
+  .stavka{display:flex;align-items:center;gap:12px;padding:13px 14px;border:1px solid var(--linija);
+          border-radius:12px;background:var(--panel);margin-bottom:9px}
+  .stavka.off{border-color:var(--crvena);background:rgba(229,72,77,.07)}
+  .ime{font-weight:700;font-size:16px}
+  .ime .broj{font-weight:500;color:var(--slabo);font-size:13px;display:block}
+  .rastegni{margin-left:auto}
+  .prekidac{min-width:104px;text-align:center;font-size:14px;padding:11px 14px}
+  .prekidac.dostupno{background:rgba(61,214,140,.15);color:var(--zelena);border:1px solid var(--zelena)}
+  .prekidac.nema{background:var(--crvena);color:#fff}
+  .zakljucano{opacity:.55}
+  .znacka{font-size:11px;padding:3px 8px;border-radius:99px;background:var(--panel2);color:var(--slabo)}
+  dialog{border:0;border-radius:16px;padding:0;background:var(--panel);color:var(--tekst);max-width:440px;width:92%}
+  dialog::backdrop{background:rgba(0,0,0,.6)}
+  .dlg{padding:22px}
+  .dlg h3{margin:0 0 10px;font-size:18px}
+  .jela{max-height:190px;overflow:auto;font-size:13px;color:var(--slabo);
+        background:var(--panel2);border-radius:10px;padding:11px;margin:12px 0}
+  .sakrij{display:none}
+  #trakaTest{background:#7a3d00;color:#ffd9a8;text-align:center;font-weight:700;
+             font-size:13px;padding:7px 12px;letter-spacing:.4px;
+             position:sticky;top:0;z-index:20;border-bottom:2px solid var(--nar)}
+  code{background:var(--panel2);padding:2px 6px;border-radius:6px;font-size:13px}
+</style>
+</head>
+<body>
+
+<div id="trakaTest" class="sakrij">TEST SERVER — ovo nije živi Zapp</div>
+
+<header>
+  <div class="logo">Zapp<span>.</span></div>
+  <div>Nema sastojka</div>
+  <div class="lokal" id="lokalIme"></div>
+</header>
+
+<div class="wrap">
+
+<!-- ============ 1. PRIJAVA ============ -->
+<section id="ekranPrijava">
+  <div class="kartica">
+    <h2 style="margin-top:0">Prijava</h2>
+    <p class="slabo">Prijavi se istim nalogom kojim ulaziš u Zapp admin.</p>
+    <div id="grPrijava"></div>
+    <label for="email">Email</label>
+    <input type="email" id="email" autocomplete="username" placeholder="lokal@zapp.io">
+    <label for="lozinka">Lozinka</label>
+    <input type="password" id="lozinka" autocomplete="current-password">
+    <label style="display:flex;gap:8px;align-items:center;margin-top:14px;color:var(--tekst);font-size:14px">
+      <input type="checkbox" id="zapamti" style="width:auto"> Ostani prijavljen na ovom uređaju
+    </label>
+    <div class="red" style="margin-top:16px">
+      <button class="btn" id="btnPrijava">Prijavi se</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 2. IZBOR LOKALA ============ -->
+<section id="ekranLokal" class="sakrij">
+  <div class="kartica">
+    <h2 style="margin-top:0">Za koje lokale?</h2>
+    <p class="slabo">Označi lokale u kojima nedostaje roba. Možeš mijenjati i kasnije.</p>
+    <div id="listaLokala"></div>
+    <div class="red" style="margin-top:16px">
+      <button class="btn" id="btnLokal">Nastavi</button>
+      <button class="btn2" id="btnSvi">Označi sve</button>
+      <button class="btn2" id="btnOdjava1">Odjava</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 3. UČITAVANJE ============ -->
+<section id="ekranSken" class="sakrij">
+  <div class="kartica">
+    <h2 style="margin-top:0">Učitavam jelovnik…</h2>
+    <div class="traka"><i id="traka"></i></div>
+    <div class="slabo" id="skenTekst">Pripremam…</div>
+  </div>
+</section>
+
+<!-- ============ 4. GLAVNI EKRAN ============ -->
+<section id="ekranGlavni" class="sakrij">
+  <div id="poruke"></div>
+
+  <div id="blokUgaseno" class="sakrij">
+    <h2 style="color:var(--crvena)">Trenutno ugašeno</h2>
+    <div id="listaUgaseno"></div>
+  </div>
+
+  <div class="kartica" style="border-color:var(--nar);display:flex;gap:11px;align-items:flex-start;padding:13px 15px">
+    <div style="font-size:20px;line-height:1.2">☀️</div>
+    <div style="font-size:14px">
+      <b>Ujutro se sve vraća samo od sebe.</b><br>
+      <span class="slabo">Gasi slobodno kad nešto nestane — sutra ujutro je opet dostupno,
+      jer se računa da ste nabavili. Ako nešto trajno ukidate, javite Zappu.</span>
+    </div>
+  </div>
+
+  <h2>Dodaci i prilozi</h2>
+  <input type="text" id="pretraga" placeholder="Traži sastojak (npr. kupus)…" style="margin-bottom:12px">
+  <div id="lista"></div>
+
+  <div class="red" style="margin:22px 0 40px">
+    <button class="btn2" id="btnOsvjezi">Osvježi jelovnik</button>
+    <button class="btn2 sakrij" id="btnLokali">Promijeni lokale</button>
+    <button class="btn2" id="btnOdjava2">Odjava</button>
+  </div>
+</section>
+
+</div>
+
+<!-- ============ POTVRDA ============ -->
+<dialog id="dlg">
+  <div class="dlg">
+    <h3 id="dlgNaslov"></h3>
+    <div id="dlgTekst"></div>
+    <div class="jela" id="dlgJela"></div>
+    <div class="traka sakrij" id="dlgTrakaBox"><i id="dlgTraka"></i></div>
+    <div class="red" style="margin-top:16px;justify-content:flex-end">
+      <button class="btn2" id="dlgOtkazi">Odustani</button>
+      <button class="btn" id="dlgPotvrdi"></button>
+    </div>
+  </div>
+</dialog>
+
+<script>
+/* =========================================================================
+   Zapp — „Nema sastojka"
+   Gasi/pali JEDAN prilog na SVIM jelima lokala odjednom.
+
+   Kako radi (v. memoriju reference-zapp-product-variants):
+   - „Kupus" nije jedan objekat u Zappu — svako jelo ima svoju kopiju opcije
+     sa svojim option_id. Zato se mora proći kroz sva jela i skupiti ID-eve.
+   - Gašenje = PUT /a/product/variants/{id} sa status:0. Kupčev API /c/ ne
+     prikazuje status-0 opcije → prilog nestane iz aplikacije.
+   - Ništa se NE briše. Paljenje je isti PUT sa status:1.
+   - Jela se NE gase — samo dodaci. (Darko, 19.08.2026.)
+   ========================================================================= */
+
+/* ⚠️ OKRUŽENJE — promijeni u 'prod' tek kad Martin potvrdi da je sve u redu.
+   Može se i preko URL-a: ...index.html?server=prod  ili  ?server=test          */
+const OKRUZENJE = 'test';
+
+const OKRUZENJA = {
+  test: {api:'https://api.z-app.io/a',  natpis:'TEST SERVER — ovo nije živi Zapp'},
+  prod: {api:'https://api.zapp.io/a',   natpis:''},
+  // lokalni mock (za razvoj kad je test server nedostupan) — ?server=mock
+  mock: {api:'http://127.0.0.1:8901/a', natpis:'MOCK — lokalni podaci, ništa se ne šalje Zappu'}
+};
+const OKR_IME = OKRUZENJA[new URLSearchParams(location.search).get('server')]
+               ? new URLSearchParams(location.search).get('server') : OKRUZENJE;
+const OKR = OKRUZENJA[OKR_IME];
+const API  = OKR.api;
+const CONC = 4;      // paralelnih poziva — više od 6 lovi 429
+const PAUZA = 120;   // ms između pokretanja poziva
+
+let TOKEN = null;
+let LOKALI = [];     // svi lokali koje nalog vidi: [{id,title}]
+let ODABRANI = [];   // id-evi lokala nad kojima radimo
+let SASTOJCI = [];   // [{kljuc, prikaz, opcije:[{id,title,…,jelo,grupa,storeId,storeIme}]}]
+let BAZA = new Set();// option id-evi koji su bili ugašeni PRIJE nego smo mi ikad dirali
+
+const $ = s => document.querySelector(s);
+const spava = ms => new Promise(r => setTimeout(r, ms));
+
+/* --- normalizacija naziva: „Kupus", „kupus ", „Kupus (svježi)" → isti sastojak --- */
+function kljuc(s){
+  return (s||'').toLowerCase()
+    .replace(/[čć]/g,'c').replace(/š/g,'s').replace(/ž/g,'z').replace(/đ/g,'d')
+    .replace(/\(.*?\)/g,' ')            // zagrade van
+    .replace(/\b(extra|ekstra|dodatni|dodatno|vise|više)\b/g,' ')
+    .replace(/[^a-z0-9]+/g,' ')
+    .trim();
+}
+const veliko = s => s.charAt(0).toUpperCase() + s.slice(1);
+
+/* --- isti sastojak, drugi pravopis ---------------------------------------
+   Kod Marcella kečap postoji kao „Ketchup ljuti" (101×), „Kecap ljuti" (11×)
+   i „Ketcap ljuti" (1×). Da gašenje ne bi ostavilo 12 stavki upaljenih,
+   nazivi na udaljenosti ≤2 slova spajaju se u jedan sastojak — lančano,
+   pa se kecap↔ketcap↔ketchup povežu iako su krajnja dva udaljena 3.
+   Prag je FIKSAN 2: skaliranje po dužini je na stvarnim podacima spajalo
+   „pljeskavica mala" s „pljeskavica velika". Dijalog uvijek izlista
+   sve nazive koje gasi, pa se greška vidi prije potvrde.                   */
+function razmak(a, b, max){
+  if(a === b) return 0;
+  if(Math.abs(a.length - b.length) > max) return max + 1;
+  let pr = Array.from({length:b.length+1}, (_,i) => i);
+  for(let i = 1; i <= a.length; i++){
+    const cur = [i];
+    for(let j = 1; j <= b.length; j++){
+      cur[j] = Math.min(pr[j]+1, cur[j-1]+1, pr[j-1] + (a[i-1] !== b[j-1] ? 1 : 0));
+    }
+    pr = cur;
+  }
+  return pr[b.length];
+}
+
+function spojiSlicne(mapa){
+  const kljucevi = [...mapa.keys()];
+  const roditelj = new Map(kljucevi.map(k => [k, k]));
+  const nadji = k => { while(roditelj.get(k) !== k) k = roditelj.get(k); return k; };
+  for(let i = 0; i < kljucevi.length; i++){
+    for(let j = i+1; j < kljucevi.length; j++){
+      const a = kljucevi[i], b = kljucevi[j];
+      if(a[0] !== b[0]) continue;                 // različito prvo slovo → različit sastojak
+      if(razmak(a, b, 2) <= 2){
+        const ra = nadji(a), rb = nadji(b);
+        if(ra !== rb) roditelj.set(ra, rb);
+      }
+    }
+  }
+  const spojeno = new Map();
+  for(const k of kljucevi){
+    const korijen = nadji(k);
+    if(!spojeno.has(korijen)) spojeno.set(korijen, {kljuc:korijen, prikaz:'', opcije:[]});
+    spojeno.get(korijen).opcije.push(...mapa.get(k).opcije);
+  }
+  // prikazni naziv = najčešći stvarni naziv u grupi
+  for(const s of spojeno.values()){
+    const broj = new Map();
+    s.opcije.forEach(o => {
+      const t = (o.title || '').trim();
+      broj.set(t, (broj.get(t) || 0) + 1);
+    });
+    s.prikaz = veliko([...broj.entries()].sort((a,b) => b[1]-a[1])[0][0]);
+    s.nazivi = [...broj.keys()];
+  }
+  return spojeno;
+}
+
+/* ---------------------------------- HTTP ---------------------------------- */
+async function zovi(put, opcije = {}, pokusaja = 4){
+  for(let i = 0; i < pokusaja; i++){
+    try{
+      const h = {Authorization:'Bearer '+TOKEN, timezone:'Europe/Sarajevo', Accept:'application/json'};
+      if(opcije.body) h['Content-Type'] = 'application/json';
+      const r = await fetch(API + put, {...opcije, headers:{...h, ...(opcije.headers||{})}});
+      if(r.status === 429){ await spava(1000 * (i+1)); continue; }       // rate limit
+      if(r.status === 401){ odjava('Sesija je istekla. Prijavi se ponovo.'); throw new Error('401'); }
+      const d = await r.json().catch(() => ({}));
+      return {ok:r.ok, status:r.status, d};
+    }catch(e){
+      if(i === pokusaja-1) throw e;
+      await spava(600 * (i+1));
+    }
+  }
+}
+
+/* mala paralelna petlja s ograničenjem */
+async function mapaN(niz, n, fn, napredak){
+  const rez = new Array(niz.length);
+  let idx = 0, gotovo = 0;
+  await Promise.all(Array.from({length:Math.min(n, niz.length)}, async () => {
+    while(true){
+      const i = idx++;
+      if(i >= niz.length) return;
+      await spava(PAUZA);
+      rez[i] = await fn(niz[i], i);
+      if(napredak) napredak(++gotovo, niz.length);
+    }
+  }));
+  return rez;
+}
+
+/* --------------------------------- PRIJAVA -------------------------------- */
+function nadjiToken(o, dubina = 0){
+  if(!o || dubina > 4) return null;
+  if(typeof o === 'object'){
+    for(const [k,v] of Object.entries(o)){
+      if(typeof v === 'string' && v.length > 20 && /token/i.test(k)) return v;
+    }
+    for(const v of Object.values(o)){
+      const t = nadjiToken(v, dubina+1);
+      if(t) return t;
+    }
+  }
+  return null;
+}
+
+async function prijava(){
+  const email = $('#email').value.trim(), loz = $('#lozinka').value;
+  if(!email || !loz){ greska('#grPrijava','Unesi email i lozinku.'); return; }
+  $('#btnPrijava').disabled = true; $('#btnPrijava').textContent = 'Prijavljujem…';
+  try{
+    const r = await fetch(API + '/login', {
+      method:'POST',
+      headers:{'Content-Type':'application/json', timezone:'Europe/Sarajevo', Accept:'application/json'},
+      body: JSON.stringify({username: email, password: loz})  // API polje je 'username', ne 'email' (potvrđeno 27.08.2026.)
+    });
+    const d = await r.json().catch(() => ({}));
+    const t = nadjiToken(d);
+    if(!t){ greska('#grPrijava', d.message || 'Pogrešan email ili lozinka.'); return; }
+    TOKEN = t;
+    ($('#zapamti').checked ? localStorage : sessionStorage).setItem('zapp_ns_token_'+OKR_IME, t);
+    $('#lozinka').value = '';
+    await izaberiLokal();
+  }catch(e){
+    greska('#grPrijava','Ne mogu se spojiti na Zapp. Provjeri internet.');
+  }finally{
+    $('#btnPrijava').disabled = false; $('#btnPrijava').textContent = 'Prijavi se';
+  }
+}
+
+function odjava(poruka){
+  TOKEN = null; STORE = null;
+  localStorage.removeItem('zapp_ns_token_'+OKR_IME); sessionStorage.removeItem('zapp_ns_token_'+OKR_IME);
+  localStorage.removeItem('zapp_ns_store');
+  prikazi('#ekranPrijava');
+  if(poruka) greska('#grPrijava', poruka);
+}
+
+/* --------------------------------- LOKALI --------------------------------- */
+async function izaberiLokal(){
+  const r = await zovi('/stores?per_page=100');
+  LOKALI = (r.d?.data?.data || r.d?.data || []).filter(s => s && s.id);
+  if(!LOKALI.length){ prikazi('#ekranPrijava'); greska('#grPrijava','Ovaj nalog nema nijedan lokal.'); return; }
+
+  // jedan lokal → nema šta birati
+  if(LOKALI.length === 1){ ODABRANI = [LOKALI[0].id]; return skeniraj(); }
+
+  const zapamceni = JSON.parse(localStorage.getItem('zapp_ns_lokali_'+OKR_IME) || '[]')
+                      .filter(id => LOKALI.some(s => s.id === id));
+  crtajIzborLokala(zapamceni.length ? zapamceni : []);
+  prikazi('#ekranLokal');
+}
+
+function crtajIzborLokala(oznaceni){
+  $('#listaLokala').innerHTML = LOKALI.map(s => `
+    <label class="stavka" style="cursor:pointer">
+      <input type="checkbox" value="${s.id}" style="width:20px;height:20px"
+             ${oznaceni.includes(s.id) ? 'checked' : ''}>
+      <div class="ime">${s.title}</div>
+    </label>`).join('');
+  $('#btnSvi').onclick = () => crtajIzborLokala(LOKALI.map(s => s.id));
+  $('#btnLokal').onclick = () => {
+    ODABRANI = [...document.querySelectorAll('#listaLokala input:checked')].map(i => +i.value);
+    if(!ODABRANI.length){ alert('Označi bar jedan lokal.'); return; }
+    localStorage.setItem('zapp_ns_lokali_'+OKR_IME, JSON.stringify(ODABRANI));
+    skeniraj();
+  };
+}
+
+/* ------------------------------- SKENIRANJE ------------------------------- */
+async function skeniraj(){
+  prikazi('#ekranSken');
+  const imena = ODABRANI.map(id => (LOKALI.find(s => s.id === id) || {}).title || id);
+  $('#lokalIme').textContent = imena.length === 1 ? imena[0] : `${imena.length} lokala`;
+
+  const svi = [];
+  BAZA = new Set();
+
+  for(let n = 0; n < ODABRANI.length; n++){
+    const sid = ODABRANI[n], sime = imena[n];
+    const prefiks = ODABRANI.length > 1 ? `[${n+1}/${ODABRANI.length}] ${sime}: ` : '';
+    napredakSken(0, 1, prefiks + 'učitavam listu jela…');
+
+    // 1) sva jela lokala
+    let jela = [], str = 1;
+    while(true){
+      const r = await zovi(`/products?store_id=${sid}&page=${str}`);
+      const d = r.d?.data?.data || [];
+      jela = jela.concat(d);
+      if(d.length === 0 || !r.d?.data?.next_page_url) break;
+      str++;
+      if(str > 60) break; // sigurnosna kočnica
+    }
+    const sVarijantama = jela.filter(p => p.variants_available == 1 || p.variants_available === true);
+
+    // 2) opcije po jelu (GET /products/{id} zna vratiti prazno pod opterećenjem → retry)
+    const ovogLokala = [];
+    await mapaN(sVarijantama, CONC, async (p) => {
+      for(let pok = 0; pok < 4; pok++){
+        const r = await zovi(`/products/${p.id}`);
+        const grupe = (r.d?.data?.variants || []).filter(g => g.options && g.options.length);
+        if(grupe.length){
+          grupe.forEach(g => g.options.forEach(o => ovogLokala.push({
+            id:o.id, title:o.title, price:o.price, stock:o.stock,
+            unlimited:o.unlimited, status:o.status, index:o.index,
+            jelo:p.title, grupa:g.title, storeId:sid, storeIme:sime
+          })));
+          return;
+        }
+        await spava(400 * (pok+1));   // flaky prazan odgovor → probaj opet
+      }
+    }, (g,uk) => napredakSken(g, uk, `${prefiks}čitam priloge… ${g}/${uk} jela`));
+
+    svi.push(...ovogLokala);
+
+    // 3) baza PO LOKALU: šta je bilo ugašeno prije nego je alat prvi put pokrenut ovdje
+    const kljucBaze = 'zapp_ns_baza_'+OKR_IME+'_'+sid;
+    if(!localStorage.getItem(kljucBaze)){
+      localStorage.setItem(kljucBaze, JSON.stringify(ovogLokala.filter(o => o.status == 0).map(o => o.id)));
+    }
+    JSON.parse(localStorage.getItem(kljucBaze) || '[]').forEach(id => BAZA.add(id));
+  }
+
+  // 4) grupiši po nazivu sastojka — preko svih odabranih lokala
+  const mapa = new Map();
+  svi.forEach(o => {
+    const k = kljuc(o.title);
+    if(!k) return;
+    if(!mapa.has(k)) mapa.set(k, {kljuc:k, prikaz:veliko(o.title.trim()), opcije:[]});
+    mapa.get(k).opcije.push(o);
+  });
+  SASTOJCI = [...spojiSlicne(mapa).values()].sort((a,b) => a.prikaz.localeCompare(b.prikaz,'bs'));
+
+  crtaj();
+  prikazi('#ekranGlavni');
+  $('#btnLokali').classList.toggle('sakrij', LOKALI.length < 2);
+  // prazan popis je skoro uvijek greška u čitanju, ne lokal bez priloga — reci to naglas
+  if(!SASTOJCI.length){
+    poruka('greska','Nisam pročitao nijedan prilog. Provjeri vezu pa klikni „Osvježi jelovnik"; ako se ponovi, javi Zappu.');
+  }
+}
+
+function napredakSken(g, uk, tekst){
+  $('#traka').style.width = Math.round(g/Math.max(uk,1)*100) + '%';
+  if(tekst) $('#skenTekst').textContent = tekst;
+}
+
+/* --------------------------------- PRIKAZ --------------------------------- */
+// stanje sastojka: 'nema' (sve ugašeno), 'dio' (nešto ugašeno), 'ima'
+function stanje(s){
+  const zive = s.opcije.filter(o => !BAZA.has(o.id));        // one koje alat smije dirati
+  if(!zive.length) return 'zakljucan';
+  const ugasene = zive.filter(o => o.status == 0).length;
+  if(ugasene === 0) return 'ima';
+  if(ugasene === zive.length) return 'nema';
+  return 'dio';
+}
+
+function crtaj(){
+  const filter = kljuc($('#pretraga').value);
+  const ugaseni = SASTOJCI.filter(s => ['nema','dio'].includes(stanje(s)));
+
+  $('#blokUgaseno').classList.toggle('sakrij', ugaseni.length === 0);
+  $('#listaUgaseno').innerHTML = ugaseni.map(red).join('');
+
+  const ostali = SASTOJCI.filter(s => !ugaseni.includes(s) && (!filter || s.kljuc.includes(filter)));
+  $('#lista').innerHTML = ostali.length
+    ? ostali.map(red).join('')
+    : '<div class="slabo" style="padding:14px">Nema takvog sastojka u jelovniku.</div>';
+
+  document.querySelectorAll('[data-k]').forEach(b => b.onclick = () => pitaj(b.dataset.k));
+}
+
+function red(s){
+  const st = stanje(s);
+  const zive = s.opcije.filter(o => !BAZA.has(o.id));
+  const brJela = new Set(zive.map(o => o.jelo)).size;
+  if(st === 'zakljucan'){
+    return `<div class="stavka zakljucano"><div class="ime">${s.prikaz}
+      <span class="broj">ugašen otprije — alat ga ne dira</span></div></div>`;
+  }
+  const brLokala = new Set(zive.map(o => o.storeId)).size;
+  const gdje = brLokala > 1 ? ` · ${brLokala} lokala` : '';
+  const viseNaziva = (s.nazivi && s.nazivi.length > 1)
+    ? ` · ${s.nazivi.length} pravopisa` : '';
+  const opis = st === 'dio'
+    ? `ugašen na ${zive.filter(o=>o.status==0).length} od ${zive.length} stavki${gdje}${viseNaziva}`
+    : `u ${brJela} ${brJela === 1 ? 'jelu' : 'jela'}${gdje}${viseNaziva}`;
+  const dugme = st === 'ima'
+    ? `<button class="prekidac dostupno" data-k="${s.kljuc}">Ima</button>`
+    : `<button class="prekidac nema" data-k="${s.kljuc}">Nema</button>`;
+  return `<div class="stavka ${st === 'ima' ? '' : 'off'}">
+      <div class="ime">${s.prikaz}<span class="broj">${opis}</span></div>
+      <div class="rastegni">${dugme}</div>
+    </div>`;
+}
+
+/* ------------------------------ GAŠENJE/PALJENJE --------------------------- */
+function pitaj(k){
+  const s = SASTOJCI.find(x => x.kljuc === k);
+  const gasi = stanje(s) === 'ima';
+  const meta = s.opcije.filter(o => !BAZA.has(o.id) && (gasi ? o.status != 0 : o.status == 0));
+  const jela = [...new Set(meta.map(o => o.jelo))];
+  const lokali = [...new Set(meta.map(o => o.storeIme))];
+  const gdje = lokali.length > 1 ? ` na <b>${lokali.length} lokala</b>` : '';
+
+  $('#dlgNaslov').textContent = gasi ? `Nema više „${s.prikaz}"?` : `Vraćam „${s.prikaz}"`;
+  $('#dlgTekst').innerHTML = gasi
+    ? `Ugasit ću ga na <b>${jela.length} ${jela.length === 1 ? 'jelu' : 'jela'}</b>${gdje}.
+       Kupci ga neće moći birati dok ga ne vratiš. Jela ostaju u prodaji.`
+    : `Vraćam ga na <b>${jela.length} ${jela.length === 1 ? 'jelo' : 'jela'}</b>${gdje}.`;
+  // grupisano po lokalu da vide gdje tačno dira
+  const nazivi = [...new Set(meta.map(o => (o.title||'').trim()))];
+  if(nazivi.length > 1){
+    $('#dlgTekst').innerHTML += `<div style="margin-top:9px;font-size:13px">
+      U jelovniku je zapisan na ${nazivi.length} načina — ${gasi ? 'gasim' : 'vraćam'} sve:
+      <b>${nazivi.join('</b>, <b>')}</b></div>`;
+  }
+  $('#dlgJela').innerHTML = lokali.length > 1
+    ? lokali.map(l => `<b>${l}</b><br>${[...new Set(meta.filter(o => o.storeIme === l).map(o => o.jelo))].join(' · ')}`).join('<br><br>')
+    : jela.join(' · ');
+  $('#dlgPotvrdi').textContent = gasi ? 'Da, nema ga' : 'Vrati';
+  $('#dlgPotvrdi').onclick = () => primijeni(s, meta, gasi);
+  $('#dlgTrakaBox').classList.add('sakrij');
+  $('#dlgOtkazi').disabled = $('#dlgPotvrdi').disabled = false;
+  $('#dlg').showModal();
+}
+
+async function primijeni(s, meta, gasi){
+  $('#dlgOtkazi').disabled = $('#dlgPotvrdi').disabled = true;
+  $('#dlgPotvrdi').textContent = 'Radim…';
+  $('#dlgTrakaBox').classList.remove('sakrij');
+  const noviStatus = gasi ? 0 : 1;
+  let palo = 0;
+
+  await mapaN(meta, CONC, async (o) => {
+    // round-trip body — dodavanje product_id/type_id u PUT vraća 500
+    const r = await zovi(`/product/variants/${o.id}`, {
+      method:'PUT',
+      body: JSON.stringify({id:o.id, title:o.title, price:o.price, stock:o.stock,
+                            unlimited:o.unlimited, status:noviStatus, index:o.index})
+    });
+    // ⚠ HTTP 200 ne znači uspjeh — provjerava se status_code u tijelu
+    if(r.d?.status_code === 1 || r.d?.status_code === '1'){ o.status = noviStatus; }
+    else { palo++; }
+  }, (g,uk) => { $('#dlgTraka').style.width = Math.round(g/uk*100) + '%'; });
+
+  $('#dlg').close();
+  $('#dlgPotvrdi').textContent = '';
+  crtaj();
+
+  const ime = s.prikaz;
+  if(palo === 0){
+    const brJela = new Set(meta.map(o => o.jelo)).size;
+    poruka('ok', gasi
+      ? `„${ime}" je ugašen na ${brJela} ${brJela === 1 ? 'jelu' : 'jela'} (${meta.length} stavki). Kupci ga više ne vide.`
+      : `„${ime}" je vraćen u ponudu na ${brJela} ${brJela === 1 ? 'jelu' : 'jela'}.`);
+  }else{
+    poruka('greska', `${meta.length - palo} od ${meta.length} prošlo. ${palo} nije — klikni „Osvježi jelovnik" pa probaj ponovo.`);
+  }
+}
+
+/* --------------------------------- POMOĆNO -------------------------------- */
+function prikazi(id){
+  ['#ekranPrijava','#ekranLokal','#ekranSken','#ekranGlavni']
+    .forEach(s => $(s).classList.toggle('sakrij', s !== id));
+}
+function greska(gdje, t){ $(gdje).innerHTML = `<div class="greska">${t}</div>`; }
+function poruka(vrsta, t){
+  $('#poruke').innerHTML = `<div class="${vrsta === 'ok' ? 'ok' : 'greska'}">${t}</div>`;
+  setTimeout(() => { $('#poruke').innerHTML = ''; }, 9000);
+}
+
+/* --------------------------------- START ---------------------------------- */
+$('#btnPrijava').onclick = prijava;
+$('#lozinka').addEventListener('keydown', e => { if(e.key === 'Enter') prijava(); });
+$('#pretraga').addEventListener('input', crtaj);
+$('#btnOsvjezi').onclick = skeniraj;
+$('#btnLokali').onclick = () => { crtajIzborLokala(ODABRANI); prikazi('#ekranLokal'); };
+$('#btnOdjava1').onclick = $('#btnOdjava2').onclick = () => odjava();
+$('#dlgOtkazi').onclick = () => $('#dlg').close();
+
+if(OKR.natpis){
+  document.querySelector('#trakaTest').textContent = OKR.natpis;
+  document.querySelector('#trakaTest').classList.remove('sakrij');
+}
+
+(async () => {
+  const t = localStorage.getItem('zapp_ns_token_'+OKR_IME) || sessionStorage.getItem('zapp_ns_token_'+OKR_IME);
+  if(t){ TOKEN = t; try{ await izaberiLokal(); }catch(e){ odjava(); } }
+  else prikazi('#ekranPrijava');
+})();
+</script>
+</body>
+</html>
