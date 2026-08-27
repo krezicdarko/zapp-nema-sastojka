@@ -357,9 +357,30 @@ function odjava(poruka){
 
 /* --------------------------------- LOKALI --------------------------------- */
 async function izaberiLokal(){
+  const izvuci = x => (x?.d?.data?.data || x?.d?.data || []).filter(s => s && s.id);
   const r = await zovi('/stores?per_page=100');
-  LOKALI = (r.d?.data?.data || r.d?.data || []).filter(s => s && s.id);
-  if(!LOKALI.length){ prikazi('#ekranPrijava'); greska('#grPrijava','Ovaj nalog nema nijedan lokal.'); return; }
+  LOKALI = izvuci(r);
+  let poruka = (!LOKALI.length && r?.d?.message) ? r.d.message : '';
+
+  // Nalozi vezani za branch (npr. rola „Vlasnik") znaju dobiti prazan popis bez branch filtera —
+  // rola nema „Manage Stores", pa se popis mora tražiti po granama iz /a/me.
+  if(!LOKALI.length){
+    const me = await zovi('/me');
+    const b = me?.d?.data?.user?.branches;
+    const grane = Array.isArray(b) ? b : String(b || '').split(',').filter(Boolean);
+    for(const g of grane){
+      const rb = await zovi('/stores?per_page=100&branch_id=' + encodeURIComponent(g));
+      for(const s of izvuci(rb)) if(!LOKALI.some(x => x.id === s.id)) LOKALI.push(s);
+      if(!poruka && rb?.d?.message && !izvuci(rb).length) poruka = rb.d.message;
+    }
+    if(!grane.length && !poruka) poruka = 'nalog nema nijednu grupu (branch)';
+  }
+
+  if(!LOKALI.length){
+    prikazi('#ekranPrijava');
+    greska('#grPrijava', 'Ovaj nalog ne vidi nijedan lokal.' + (poruka ? ' Server javlja: „' + poruka + '".' : ''));
+    return;
+  }
 
   // jedan lokal → nema šta birati
   if(LOKALI.length === 1){ ODABRANI = [LOKALI[0].id]; return skeniraj(); }
