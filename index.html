@@ -75,7 +75,7 @@
 
 <header>
   <div class="logo">Zapp<span>.</span></div>
-  <div>Nema sastojka <span style="font-size:11px;opacity:.55;font-weight:400">v4</span></div>
+  <div>Nema sastojka <span style="font-size:11px;opacity:.55;font-weight:400">v5</span></div>
   <div class="lokal" id="lokalIme"></div>
 </header>
 
@@ -356,13 +356,20 @@ async function prijava(){
     // (Ako server ikad počne vraćati token odmah, ova grana i dalje radi.)
     if(!t){
       if(d.status_code === 1){
-        OTP_NALOG = $('#email').value.trim();
-        OTP_ID = d.data && d.data.id ? d.data.id : null;
-        $('#otpNalog').textContent = OTP_NALOG;
-        $('#grOtp').innerHTML = '';
-        $('#otp').value = '';
-        prikazi('#ekranOtp');
-        $('#otp').focus();
+        // Server kaže „Success." ali tokena nema. Ispiši STRUKTURU odgovora (nazivi polja i
+        // dužine, bez vrijednosti) da se vidi gdje token stvarno stoji — ili da ga stvarno nema.
+        const dijelovi = [];
+        (function hodaj(o, put, dub){
+          if(dub > 4 || !o || typeof o !== 'object') return;
+          for(const k of Object.keys(o)){
+            const v = o[k], staza = put ? put + '.' + k : k;
+            if(typeof v === 'string') dijelovi.push(staza + ':tekst(' + v.length + ')');
+            else if(v && typeof v === 'object') { dijelovi.push(staza + ':objekat'); hodaj(v, staza, dub + 1); }
+            else dijelovi.push(staza + ':' + typeof v);
+          }
+        })(d, '', 0);
+        greska('#grPrijava', 'Prijava primljena, ali server nije vratio pristupni ključ.<br>' +
+               '<span style="font-family:monospace;font-size:12px">' + dijelovi.join(' · ') + '</span>');
         return;
       }
       greska('#grPrijava', d.message || 'Pogrešan email ili lozinka.');
