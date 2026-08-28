@@ -75,45 +75,39 @@
 
 <header>
   <div class="logo">Zapp<span>.</span></div>
-  <div>Nema sastojka <span style="font-size:11px;opacity:.55;font-weight:400">v5</span></div>
+  <div>Nema sastojka <span style="font-size:11px;opacity:.55;font-weight:400">v6</span></div>
   <div class="lokal" id="lokalIme"></div>
 </header>
 
 <div class="wrap">
 
-<!-- ============ 1. PRIJAVA ============ -->
+<!-- ============ 1. PRISTUPNI KLJUC ============ -->
 <section id="ekranPrijava">
   <div class="kartica">
-    <h2 style="margin-top:0">Prijava</h2>
-    <p class="slabo">Prijavi se istim nalogom kojim ulaziš u Zapp admin.</p>
+    <h2 style="margin-top:0">Pristupni ključ</h2>
+    <p class="slabo">Zapp ne dopušta prijavu emailom s ove stranice, pa se koristi ključ.
+      Zalijepi ga jednom i ostaje zapamćen na ovom uređaju.</p>
     <div id="grPrijava"></div>
-    <label for="email">Email</label>
-    <input type="email" id="email" autocomplete="username" placeholder="lokal@zapp.io">
-    <label for="lozinka">Lozinka</label>
-    <input type="password" id="lozinka" autocomplete="current-password">
+    <label for="kljuc">Ključ</label>
+    <input type="password" id="kljuc" autocomplete="off" spellcheck="false" placeholder="zalijepi ključ ovdje">
     <label style="display:flex;gap:8px;align-items:center;margin-top:14px;color:var(--tekst);font-size:14px">
-      <input type="checkbox" id="zapamti" style="width:auto"> Ostani prijavljen na ovom uređaju
+      <input type="checkbox" id="zapamti" style="width:auto" checked> Zapamti na ovom uređaju
     </label>
     <div class="red" style="margin-top:16px">
-      <button class="btn" id="btnPrijava">Prijavi se</button>
+      <button class="btn" id="btnPrijava">Nastavi</button>
     </div>
+    <details style="margin-top:18px">
+      <summary class="slabo" style="cursor:pointer">Gdje naći ključ?</summary>
+      <ol class="slabo" style="margin:10px 0 0 18px;line-height:1.7">
+        <li>Prijavi se na <b>admin.zapp.io</b> nalogom lokala</li>
+        <li>Pritisni <b>F12</b> pa otvori karticu <b>Console</b></li>
+        <li>Upiši <code>localStorage.getItem('access_token')</code> i pritisni Enter</li>
+        <li>Kopiraj ispisani tekst (bez navodnika) i zalijepi ga gore</li>
+      </ol>
+    </details>
   </div>
 </section>
 
-<!-- ============ 1b. POTVRDA KODOM (OTP) ============ -->
-<section id="ekranOtp" class="sakrij">
-  <div class="kartica">
-    <h2 style="margin-top:0">Potvrdi kod</h2>
-    <p class="slabo">Zapp je poslao jednokratni kod na nalog <b id="otpNalog"></b>. Upiši ga ovdje.</p>
-    <div id="grOtp"></div>
-    <label for="otp">Kod</label>
-    <input type="text" id="otp" inputmode="numeric" autocomplete="one-time-code" placeholder="npr. 123456">
-    <div class="red" style="margin-top:16px">
-      <button class="btn" id="btnOtp">Potvrdi</button>
-      <button class="btn sporedno" id="btnOtpNazad">Nazad</button>
-    </div>
-  </div>
-</section>
 
 <!-- ============ 2. IZBOR LOKALA ============ -->
 <section id="ekranLokal" class="sakrij">
@@ -338,52 +332,41 @@ function nadjiToken(o, dubina = 0){
   return null;
 }
 
-async function prijava(){
-  const email = $('#email').value.trim(), loz = $('#lozinka').value;
-  if(!email || !loz){ greska('#grPrijava','Unesi email i lozinku.'); return; }
-  $('#btnPrijava').disabled = true; $('#btnPrijava').textContent = 'Prijavljujem…';
+function danaDoIsteka(t){
+  // exp iz JWT payloada, bez provjere potpisa. null ako nije JWT.
   try{
-    const r = await fetch(API + '/login', {
-      method:'POST',
-      headers:{'Content-Type':'application/json', timezone:'Europe/Sarajevo', Accept:'application/json'},
-      body: JSON.stringify({username: email, password: loz})  // API polje je 'username', ne 'email' (potvrđeno 27.08.2026.)
-    });
-    const d = await r.json().catch(() => ({}));
-    const t = nadjiToken(d);
-    $('#lozinka').value = '';
-
-    // Zapp prijava je DVOKORAČNA: /login vrati „Success." bez tokena, pa ide /verify-otp.
-    // (Ako server ikad počne vraćati token odmah, ova grana i dalje radi.)
-    if(!t){
-      if(d.status_code === 1){
-        // Server kaže „Success." ali tokena nema. Ispiši STRUKTURU odgovora (nazivi polja i
-        // dužine, bez vrijednosti) da se vidi gdje token stvarno stoji — ili da ga stvarno nema.
-        const dijelovi = [];
-        (function hodaj(o, put, dub){
-          if(dub > 4 || !o || typeof o !== 'object') return;
-          for(const k of Object.keys(o)){
-            const v = o[k], staza = put ? put + '.' + k : k;
-            if(typeof v === 'string') dijelovi.push(staza + ':tekst(' + v.length + ')');
-            else if(v && typeof v === 'object') { dijelovi.push(staza + ':objekat'); hodaj(v, staza, dub + 1); }
-            else dijelovi.push(staza + ':' + typeof v);
-          }
-        })(d, '', 0);
-        greska('#grPrijava', 'Prijava primljena, ali server nije vratio pristupni ključ.<br>' +
-               '<span style="font-family:monospace;font-size:12px">' + dijelovi.join(' · ') + '</span>');
-        return;
-      }
-      greska('#grPrijava', d.message || 'Pogrešan email ili lozinka.');
-      return;
-    }
-    await zavrsiPrijavu(t);
-  }catch(e){
-    greska('#grPrijava','Zapelo nakon prijave: ' + (e && e.message ? e.message : e));
-  }finally{
-    $('#btnPrijava').disabled = false; $('#btnPrijava').textContent = 'Prijavi se';
-  }
+    const dio = t.split('.')[1];
+    const p = JSON.parse(atob(dio.replace(/-/g,'+').replace(/_/g,'/')));
+    return p.exp ? (p.exp*1000 - Date.now())/86400000 : null;
+  }catch(e){ return null; }
 }
 
-let OTP_NALOG = null, OTP_ID = null;
+async function prijava(){
+  const t = $('#kljuc').value.trim().replace(/^["']|["']$/g,'');
+  if(!t){ greska('#grPrijava','Zalijepi ključ.'); return; }
+  const dana = danaDoIsteka(t);
+  if(dana !== null && dana <= 0){
+    greska('#grPrijava','Ovaj ključ je istekao prije ' + Math.round(-dana) + ' dana. Zatraži novi.');
+    return;
+  }
+  $('#btnPrijava').disabled = true; $('#btnPrijava').textContent = 'Provjeravam…';
+  try{
+    // Ključ se provjerava PRIJE nego se spremi — da se ne zapamti nešto što ne radi.
+    const r = await fetch(API + '/me', {headers:{Authorization:'Bearer '+t, Accept:'application/json', timezone:'Europe/Sarajevo'}});
+    const d = await r.json().catch(() => ({}));
+    if(r.status === 401 || d.status_code !== 1){
+      greska('#grPrijava','Ključ nije prihvaćen' + (d.message ? ': ' + d.message : '') + '.');
+      return;
+    }
+    $('#kljuc').value = '';
+    if(dana !== null && dana < 7) poruka('greska','Ključ ističe za ' + Math.round(dana) + ' dana — javi Zappu da ga obnovi.');
+    await zavrsiPrijavu(t);
+  }catch(e){
+    greska('#grPrijava','Ne mogu provjeriti ključ: ' + (e && e.message ? e.message : e));
+  }finally{
+    $('#btnPrijava').disabled = false; $('#btnPrijava').textContent = 'Nastavi';
+  }
+}
 
 function zavrsiPrijavu(t){
   TOKEN = t;
@@ -391,28 +374,6 @@ function zavrsiPrijavu(t){
   return izaberiLokal();
 }
 
-async function potvrdiOtp(){
-  const kod = $('#otp').value.trim();
-  if(!kod){ greska('#grOtp','Upiši kod koji ti je stigao.'); return; }
-  $('#btnOtp').disabled = true; $('#btnOtp').textContent = 'Provjeravam…';
-  try{
-    const tijelo = {username: OTP_NALOG, email: OTP_NALOG, otp: kod};
-    if(OTP_ID) tijelo.id = OTP_ID;
-    const r = await fetch(API + '/verify-otp', {
-      method:'POST',
-      headers:{'Content-Type':'application/json', timezone:'Europe/Sarajevo', Accept:'application/json'},
-      body: JSON.stringify(tijelo)
-    });
-    const d = await r.json().catch(() => ({}));
-    const t = nadjiToken(d);
-    if(!t){ greska('#grOtp', d.message || 'Kod nije prihvaćen.'); return; }
-    await zavrsiPrijavu(t);
-  }catch(e){
-    greska('#grOtp','Zapelo pri potvrdi koda: ' + (e && e.message ? e.message : e));
-  }finally{
-    $('#btnOtp').disabled = false; $('#btnOtp').textContent = 'Potvrdi';
-  }
-}
 
 function odjava(poruka){
   TOKEN = null; STORE = null;
@@ -669,7 +630,7 @@ async function primijeni(s, meta, gasi){
 
 /* --------------------------------- POMOĆNO -------------------------------- */
 function prikazi(id){
-  ['#ekranPrijava','#ekranOtp','#ekranLokal','#ekranSken','#ekranGlavni']
+  ['#ekranPrijava','#ekranLokal','#ekranSken','#ekranGlavni']
     .forEach(s => $(s).classList.toggle('sakrij', s !== id));
 }
 function greska(gdje, t){ $(gdje).innerHTML = `<div class="greska">${t}</div>`; }
@@ -680,10 +641,8 @@ function poruka(vrsta, t){
 
 /* --------------------------------- START ---------------------------------- */
 $('#btnPrijava').onclick = prijava;
-$('#lozinka').addEventListener('keydown', e => { if(e.key === 'Enter') prijava(); });
-$('#btnOtp').onclick = potvrdiOtp;
-$('#otp').addEventListener('keydown', e => { if(e.key === 'Enter') potvrdiOtp(); });
-$('#btnOtpNazad').onclick = () => { $('#grPrijava').innerHTML = ''; prikazi('#ekranPrijava'); };
+$('#kljuc').addEventListener('keydown', e => { if(e.key === 'Enter') prijava(); });
+
 $('#pretraga').addEventListener('input', crtaj);
 $('#btnOsvjezi').onclick = skeniraj;
 $('#btnLokali').onclick = () => { crtajIzborLokala(ODABRANI); prikazi('#ekranLokal'); };
